@@ -1,0 +1,43 @@
+{
+  "name": "saas-subscription-platform",
+  "version": "1.0.0",
+  "description": "AI-Enabled SaaS Subscription & Analytics Platform with Express, PostgreSQL, Stripe, Redis, BullMQ, PDFKit and MCP SDK",
+  "main": "src/server.js",
+  "scripts": {
+    "all": "node src/all.js",
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "worker": "node src/jobs/worker.js",
+    "cron": "node src/jobs/cron.js",
+    "mcp": "node src/mcp/index.js",
+    "test": "jest --runInBand --detectOpenHandles",
+    "db:migrate": "node src/scripts/migrate.js",
+    "db:seed": "node src/scripts/seed.js",
+    "db:view": "node src/scripts/viewDb.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "bullmq": "^6.5.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "ioredis": "^6.0.0",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.3.1",
+    "pdfkit": "^0.20.2",
+    "pg": "^8.23.1",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.8",
+    "stripe": "^23.1.0"
+  },
+  "devDependencies": {
+    "ioredis-mock": "^8.13.1",
+    "jest": "^30.5.2",
+    "sqlite3": "^6.0.1",
+    "supertest": "^7.3.1"
+  }
+}
