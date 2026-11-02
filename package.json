@@ -14,7 +14,8 @@
     "db:migrate": "node src/scripts/migrate.js",
     "db:seed": "node src/scripts/seed.js",
     "db:view": "node src/scripts/viewDb.js",
-    "demo:checkout": "node src/scripts/demoCheckout.js"
+    "demo:checkout": "node src/scripts/demoCheckout.js",
+    "demo:mcp": "node src/scripts/demoMcp.js"
   },
   "keywords": [],
   "author": "",
