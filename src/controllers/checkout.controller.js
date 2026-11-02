@@ -240,7 +240,7 @@ const renderCheckoutPage = async (req, res, next) => {
             Subscription status: <strong>ACTIVE</strong><br>
             Invoice: <strong>\${data.invoiceNumber || 'Generated'}</strong><br>
             Confirmation email dispatched with PDF attachment.<br>
-            <a href="/api/invoices/\${data.invoiceId}?download=true" class="download-btn" target="_blank">
+            <a href="/api/invoices/\${data.invoiceId}?download=true&user_id=${userId}" class="download-btn" target="_blank">
               📄 Download PDF Invoice
             </a>
           \`;
@@ -470,7 +470,7 @@ const renderSuccessPage = async (req, res, next) => {
 
     <div class="btn-group">
       ${invoice ? `
-      <a href="/api/invoices/${invoice.id}?download=true" class="primary-btn" target="_blank">
+      <a href="/api/invoices/${invoice.id}?download=true&user_id=${user ? user.id : ''}" class="primary-btn" target="_blank">
         📄 Download PDF Invoice
       </a>
       ` : ''}

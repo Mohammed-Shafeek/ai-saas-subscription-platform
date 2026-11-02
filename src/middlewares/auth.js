@@ -9,6 +9,7 @@ const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     const headerUserId = req.headers['x-user-id'];
+    const queryUserId = req.query.user_id || req.query.token;
 
     let userId = null;
 
@@ -16,6 +17,8 @@ const authenticate = async (req, res, next) => {
       userId = headerUserId;
     } else if (authHeader && authHeader.startsWith('Bearer ')) {
       userId = authHeader.split(' ')[1];
+    } else if (queryUserId) {
+      userId = queryUserId;
     }
 
     if (!userId) {
