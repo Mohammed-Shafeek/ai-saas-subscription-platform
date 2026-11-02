@@ -282,7 +282,79 @@ The server will boot on `http://localhost:3000` (or your configured `PORT`).
 
 ---
 
-## 11. How to Configure Stripe Webhook Testing
+## 11. How to Test and Demonstrate Checkout Without a Frontend
+
+You do **not** need to build a custom frontend application. Stripe Checkout provides a **prebuilt, hosted payment page**. Furthermore, this platform includes an **automated end-to-end demonstration script** for instant local validation and video walkthroughs.
+
+### Option A: Automated One-Command Demonstration (Recommended for Loom Video)
+Run the built-in end-to-end checkout demonstration script:
+```bash
+npm run demo:checkout
+```
+This script executes the complete subscription lifecycle in terminal:
+1. Selects the Pro Plan ($49.00/mo) from the database.
+2. Creates a customer account.
+3. Fires a verified `checkout.session.completed` event through `webhook.service.js`.
+4. Activates the subscription in PostgreSQL/SQLite.
+5. Records the transaction in `payments`.
+6. Generates an official branded PDF invoice in `storage/invoices/`.
+7. Dispatches an email with the PDF attached via Nodemailer/Mailtrap.
+8. Evicts Redis cache and displays updated platform analytics in real-time.
+
+To inspect the database afterwards:
+```bash
+npm run db:view
+```
+
+---
+
+### Option B: Real Stripe Hosted Checkout Page (Interactive)
+
+1. **Create a Checkout Session via API**:
+   Using PowerShell:
+   ```powershell
+   $body = @{
+     name = "Alex Morgan"
+     email = "alex.morgan@example.com"
+     planId = "85fa72fc-778f-407d-b517-a08440feeb90"
+   } | ConvertTo-Json
+
+   $response = Invoke-RestMethod -Uri "http://localhost:3000/api/checkout/create-session" -Method POST -Body $body -ContentType "application/json"
+   $response.data.url
+   ```
+   Or using `curl.exe`:
+   ```bash
+   curl.exe -X POST http://localhost:3000/api/checkout/create-session ^
+     -H "Content-Type: application/json" ^
+     -d "{\"name\":\"Alex Morgan\",\"email\":\"alex.morgan@example.com\",\"planId\":\"85fa72fc-778f-407d-b517-a08440feeb90\"}"
+   ```
+
+2. **Open the Checkout URL in your Browser**:
+   - Copy the returned `url` (`https://checkout.stripe.com/c/pay/cs_test_...`) and paste it into Chrome or Edge.
+   - Stripe's hosted checkout UI will render with the plan details and payment form.
+
+3. **Complete Payment with Stripe Test Credentials**:
+   - **Card Number**: `4242 4242 4242 4242`
+   - **Expiration**: Any future date (e.g. `12/32`)
+   - **CVC**: `123`
+   - **Name on Card**: `Alex Morgan`
+   - Click **Subscribe**.
+
+4. **Forward Webhooks with Stripe CLI**:
+   In a separate terminal:
+   ```bash
+   stripe listen --forward-to localhost:3000/api/webhooks/stripe
+   ```
+   Stripe will catch the payment confirmation and forward the signed webhook event to your local API server.
+
+5. **Verify the Result**:
+   - Inspect the database: `npm run db:view`
+   - Check the invoice PDF: Located in `storage/invoices/INV-*.pdf`
+   - Check your Mailtrap inbox for the confirmation email.
+
+---
+
+## 12. How to Configure Stripe Webhook Testing
 1. Install the official [Stripe CLI](https://stripe.com/docs/stripe-cli).
 2. Authenticate the CLI with your Stripe test account:
    ```bash
