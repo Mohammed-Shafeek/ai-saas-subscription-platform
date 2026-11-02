@@ -25,9 +25,11 @@ app.get('/', (req, res) => {
   });
 });
 
-// Interactive test checkout UI
+// Interactive test checkout UI & fulfillment redirect pages
 const checkoutController = require('./controllers/checkout.controller');
 app.get('/checkout', checkoutController.renderCheckoutPage);
+app.get('/success', checkoutController.renderSuccessPage);
+app.get('/cancel', checkoutController.renderCancelPage);
 
 // API Routes
 app.use('/api', apiRoutes);

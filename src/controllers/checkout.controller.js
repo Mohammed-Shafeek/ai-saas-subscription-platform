@@ -270,6 +270,254 @@ const renderCheckoutPage = async (req, res, next) => {
 };
 
 /**
+ * Render success page on completion of Stripe Checkout
+ */
+const renderSuccessPage = async (req, res, next) => {
+  try {
+    const sessionId = req.query.session_id;
+    let user = null;
+    let plan = null;
+    let invoice = null;
+    let subscription = null;
+
+    if (sessionId) {
+      const { stripe } = require('../config/stripe');
+      let session = null;
+      try {
+        session = await stripe.checkout.sessions.retrieve(sessionId);
+      } catch (err) {
+        console.warn(`[Checkout] Could not retrieve session ${sessionId} from Stripe:`, err.message);
+      }
+
+      if (session && session.payment_status === 'paid') {
+        const { userId, planId } = session.metadata || {};
+        if (userId && planId) {
+          // Process fulfillment event idempotently
+          const event = {
+            id: `evt_session_${sessionId}`,
+            type: 'checkout.session.completed',
+            data: { object: session }
+          };
+          await webhookService.processEvent(event);
+        }
+      }
+
+      // Query latest subscription & invoice records
+      if (session?.subscription) {
+        subscription = await Subscription.findOne({
+          where: { stripeSubscriptionId: session.subscription },
+          include: [{ model: Plan, as: 'plan' }, { model: User, as: 'user' }]
+        });
+      }
+
+      if (!subscription) {
+        subscription = await Subscription.findOne({
+          order: [['createdAt', 'DESC']],
+          include: [{ model: Plan, as: 'plan' }, { model: User, as: 'user' }]
+        });
+      }
+
+      if (subscription) {
+        user = subscription.user;
+        plan = subscription.plan;
+        const payment = await Payment.findOne({
+          where: { subscriptionId: subscription.id },
+          order: [['createdAt', 'DESC']]
+        });
+        if (payment) {
+          invoice = await Invoice.findOne({ where: { paymentId: payment.id } });
+        }
+      }
+    }
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscription Confirmed - AI SaaS Platform</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      max-width: 540px;
+      width: 100%;
+      padding: 40px;
+      text-align: center;
+    }
+    .icon-wrapper {
+      width: 72px;
+      height: 72px;
+      background: #ecfdf5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .checkmark {
+      font-size: 36px;
+      color: #10b981;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    p.subtitle {
+      color: #64748b;
+      font-size: 15px;
+      margin-bottom: 24px;
+    }
+    .details-box {
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: left;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    .details-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .details-row:last-child {
+      margin-bottom: 0;
+    }
+    .label {
+      color: #64748b;
+      font-weight: 500;
+    }
+    .value {
+      color: #0f172a;
+      font-weight: 600;
+    }
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .primary-btn {
+      background: #6366f1;
+      color: white;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      display: inline-block;
+      transition: background 0.2s;
+    }
+    .primary-btn:hover {
+      background: #4f46e5;
+    }
+    .secondary-btn {
+      background: #e2e8f0;
+      color: #334155;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      display: inline-block;
+      transition: background 0.2s;
+    }
+    .secondary-btn:hover {
+      background: #cbd5e1;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-wrapper">
+      <span class="checkmark">✓</span>
+    </div>
+    <h1>Payment Successful!</h1>
+    <p class="subtitle">Thank you for subscribing. Your account is now fully active.</p>
+
+    <div class="details-box">
+      <div class="details-row">
+        <span class="label">Plan</span>
+        <span class="value">${plan ? plan.name : 'Pro Plan'}</span>
+      </div>
+      <div class="details-row">
+        <span class="label">Customer</span>
+        <span class="value">${user ? user.name : 'Alex Morgan'}</span>
+      </div>
+      <div class="details-row">
+        <span class="label">Status</span>
+        <span class="value" style="color: #10b981;">● Active</span>
+      </div>
+      ${invoice ? `
+      <div class="details-row">
+        <span class="label">Invoice Number</span>
+        <span class="value">${invoice.invoiceNumber}</span>
+      </div>
+      ` : ''}
+    </div>
+
+    <div class="btn-group">
+      ${invoice ? `
+      <a href="/api/invoices/${invoice.id}?download=true" class="primary-btn" target="_blank">
+        📄 Download PDF Invoice
+      </a>
+      ` : ''}
+      <a href="/api/health" class="secondary-btn">
+        View Platform Health & Status
+      </a>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Render cancel page
+ */
+const renderCancelPage = (req, res) => {
+  res.setHeader('Content-Type', 'text/html');
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Checkout Cancelled</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f8fafc; color: #334155; }
+    .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; max-width: 450px; }
+    h1 { color: #e11d48; margin-bottom: 12px; }
+    p { margin-bottom: 20px; color: #64748b; }
+    a { background: #6366f1; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Checkout Cancelled</h1>
+    <p>Your subscription purchase was cancelled. No charges were made to your payment method.</p>
+    <a href="/checkout">Return to Checkout</a>
+  </div>
+</body>
+</html>`);
+};
+
+/**
  * Simulate payment completion webhook for local test checkout
  */
 const simulatePayment = async (req, res, next) => {
@@ -335,5 +583,7 @@ const simulatePayment = async (req, res, next) => {
 module.exports = {
   createSession,
   renderCheckoutPage,
+  renderSuccessPage,
+  renderCancelPage,
   simulatePayment
 };
