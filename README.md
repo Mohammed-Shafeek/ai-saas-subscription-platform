@@ -233,15 +233,52 @@ The server will boot on `http://localhost:3000` (or your configured `PORT`).
 
 ---
 
-## 10. How to Start the Background Worker
-In a separate terminal, start the BullMQ worker to consume reminder jobs:
-```bash
-npm run worker
-```
-To run the daily renewal reminder cron process:
-```bash
-npm run cron
-```
+## 10. How to Start and Verify Background Jobs
+
+### Architecture
+- **Cron Scheduler (`src/jobs/reminder.cron.js`)**: Runs once daily (default: 9:00 AM, `0 9 * * *`). Queries active subscriptions whose `endDate` falls within the next 3 days (`[Op.between]: [now, now + 3 days]`).
+- **Deduplication Guard**: Checks Redis key `reminder:sent:<subId>:<expiryDate>` (with a 7-day TTL) and assigns a deterministic BullMQ `jobId` (`reminder-<subId>-<expiryDate>`) to guarantee the user is never reminded twice for the same billing cycle.
+- **Queue (`src/queues/reminder.queue.js`)**: BullMQ queue named `subscription-reminders` with 3 retry attempts and exponential backoff (`delay: 2000ms`).
+- **Worker (`src/jobs/reminder.worker.js`)**: Consumes jobs, formats renewal reminder templates, and dispatches emails via Nodemailer/Mailtrap.
+
+### Starting the Services
+- **Start the Worker**:
+  ```bash
+  npm run worker
+  ```
+- **Start the Cron Scheduler**:
+  ```bash
+  npm run cron
+  ```
+- **Or Run Everything Together**:
+  ```bash
+  npm run all
+  ```
+
+### Verifying Background Jobs
+1. **Automated Unit & Integration Verification**:
+   Run the dedicated test suite:
+   ```bash
+   npx jest tests/phase5-cron-worker.test.js
+   ```
+   This validates:
+   - Detecting subscriptions expiring within the 3-day window.
+   - Ignoring subscriptions expiring beyond 3 days or canceled.
+   - Deduplication in Redis preventing repeated job enqueuing.
+   - Worker processing and exponential retry behavior.
+
+2. **Manual Live Verification**:
+   - Seed the database with `npm run db:seed`.
+   - Update a subscription's `endDate` in the database to 2 days from now.
+   - Run `node -e "require('./src/jobs/reminder.cron').checkExpiringSubscriptions()"` to trigger an immediate scan.
+   - Observe the worker terminal logs:
+     ```text
+     [Cron] Found 1 expiring subscription(s).
+     [Cron] Enqueued reminder job for subscription <id> (2 days remaining).
+     [Worker] Processing reminder job for subscription <id>...
+     [Worker] Successfully delivered renewal reminder to <email>.
+     ```
+   - Check your Mailtrap inbox to view the delivered renewal reminder email.
 
 ---
 
