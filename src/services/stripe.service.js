@@ -95,10 +95,10 @@ class StripeService {
 
       if (process.env.NODE_ENV !== 'production' && (isPlaceholder || stripeErr.message?.includes('API Key'))) {
         const mockSessionId = `cs_test_mock_${Date.now()}`;
-        console.warn(`[StripeService] Real Stripe API skipped (${stripeErr.message}). Returning development session URL.`);
+        console.warn(`[StripeService] Real Stripe API skipped (${stripeErr.message}). Returning local interactive checkout page.`);
         return {
           sessionId: mockSessionId,
-          url: `https://checkout.stripe.com/c/pay/${mockSessionId}`
+          url: `${frontendUrl}/checkout?session_id=${mockSessionId}&plan_id=${plan.id}&user_id=${user.id}`
         };
       }
       throw stripeErr;

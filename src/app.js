@@ -25,6 +25,10 @@ app.get('/', (req, res) => {
   });
 });
 
+// Interactive test checkout UI
+const checkoutController = require('./controllers/checkout.controller');
+app.get('/checkout', checkoutController.renderCheckoutPage);
+
 // API Routes
 app.use('/api', apiRoutes);
 
