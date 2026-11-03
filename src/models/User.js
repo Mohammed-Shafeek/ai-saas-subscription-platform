@@ -1,3 +1,4 @@
+
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 
@@ -25,14 +26,7 @@ const User = sequelize.define('User', {
   }
 }, {
   tableName: 'users',
-  timestamps: true,
-  indexes: [
-    {
-      unique: true,
-      fields: ['email']
-    }
-  ]
+  timestamps: true
 });
 
 module.exports = User;
-

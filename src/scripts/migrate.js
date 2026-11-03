@@ -5,10 +5,22 @@ const migrate = async () => {
   try {
     console.log('Connecting to database...');
     await sequelize.authenticate();
-    console.log('Database connection established.');
+    console.log(`Database connection established (${sequelize.getDialect()}).`);
 
     console.log('Synchronizing database models...');
-    await syncDatabase({ alter: true });
+
+    if (sequelize.getDialect() === 'sqlite') {
+      // Clean up any stale backup tables from previous interrupted SQLite syncs
+      const tables = ['users', 'plans', 'subscriptions', 'payments', 'invoices', 'webhook_events'];
+      for (const t of tables) {
+        await sequelize.query(`DROP TABLE IF EXISTS \`${t}_backup\``).catch(() => {});
+      }
+      await syncDatabase();
+    } else {
+      // PostgreSQL natively supports ALTER TABLE operations
+      await syncDatabase({ alter: true });
+    }
+
     console.log('Database migration completed successfully.');
 
     await sequelize.close();
@@ -24,4 +36,3 @@ if (require.main === module) {
 }
 
 module.exports = migrate;
-
