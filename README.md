@@ -391,6 +391,28 @@ The Model Context Protocol (MCP) server provides Claude Desktop with direct, saf
    - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
    - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 2. Add the `saas-analytics` server under `mcpServers`:
+
+   **For Local SQLite Setup (Default Zero-Config):**
+   ```json
+   {
+     "mcpServers": {
+       "saas-analytics": {
+         "command": "node",
+         "args": [
+           "c:\\Interview task\\src\\mcp\\index.js"
+         ],
+         "env": {
+           "NODE_ENV": "development",
+           "DB_DIALECT": "sqlite",
+           "SQLITE_STORAGE": "c:\\Interview task\\storage\\saas_platform.sqlite",
+           "USE_MOCK_REDIS": "true"
+         }
+       }
+     }
+   }
+   ```
+
+   **For Docker PostgreSQL & Redis Setup:**
    ```json
    {
      "mcpServers": {
